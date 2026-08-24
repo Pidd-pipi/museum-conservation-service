@@ -66,9 +66,12 @@ func opsLastID(p OpsPage) string {
 }
 
 // opsFilterRecords returns the records matching the query, keeping the order
-// of the input slice.
+// of the input slice. It allocates a fresh backing slice so the result never
+// aliases the input's underlying array — otherwise two sequential filters
+// over a shared source (e.g. search A then search B) would overwrite each
+// other's results.
 func opsFilterRecords(items []OpsRecord, query OpsQuery) []OpsRecord {
-	filtered := items[:0]
+	filtered := make([]OpsRecord, 0, len(items))
 	for _, item := range items {
 		if opsMatch(item, query) {
 			filtered = append(filtered, item)

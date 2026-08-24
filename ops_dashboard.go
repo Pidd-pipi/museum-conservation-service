@@ -16,9 +16,8 @@ type OpsDashboardView struct {
 // OpsDashboard assembles the operations overview from the snapshot cache and
 // the search index.
 type OpsDashboard struct {
-	cache       *OpsSnapshotCache
-	search      *OpsSearchIndex
-	lastResults []OpsRecord
+	cache  *OpsSnapshotCache
+	search *OpsSearchIndex
 }
 
 func newOpsDashboard(cache *OpsSnapshotCache, search *OpsSearchIndex) *OpsDashboard {
@@ -30,14 +29,15 @@ func (d *OpsDashboard) Build(now time.Time) (OpsDashboardView, error) {
 	if !fresh {
 		return OpsDashboardView{}, fmt.Errorf("%w: snapshot cache is stale", ErrOpsNotFound)
 	}
-	if d.lastResults == nil {
-		d.lastResults = d.search.Search("", 20)
-	}
+	// Fetch fresh search results on every build. The search index returns
+	// independent copies, so caching the slice between requests would only risk
+	// handing one client a slice that a later rebuild mutated.
+	results := d.search.Search("", 20)
 	view := OpsDashboardView{
 		Snapshot:      snapshot,
 		TopRecords:    top,
-		SearchResults: d.lastResults,
-		SearchHits:    len(d.lastResults),
+		SearchResults: results,
+		SearchHits:    len(results),
 		Generated:     now.Format(time.RFC3339Nano),
 	}
 	return view, nil
