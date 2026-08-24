@@ -22,16 +22,16 @@ type ArtifactHumidity struct {
 	Latest float64 `json:"latest"`
 }
 
-var trendScratch = make([]ArtifactHumidity, 0, 8)
-
 // HumidityTrend returns the latest humidity reading of every artifact.
+// A freshly allocated slice is returned on every call so that results do
+// not alias one another across calls.
 func (s *ConservationService) HumidityTrend() []ArtifactHumidity {
 	items := s.store.List()
-	trendScratch = trendScratch[:0]
+	trend := make([]ArtifactHumidity, 0, len(items))
 	for _, item := range items {
 		if len(item.HumiditySamples) > 0 {
-			trendScratch = append(trendScratch, ArtifactHumidity{ID: item.ID, Latest: item.HumiditySamples[len(item.HumiditySamples)-1]})
+			trend = append(trend, ArtifactHumidity{ID: item.ID, Latest: item.HumiditySamples[len(item.HumiditySamples)-1]})
 		}
 	}
-	return trendScratch
+	return trend
 }

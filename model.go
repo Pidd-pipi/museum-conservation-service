@@ -10,7 +10,13 @@ type Artifact struct {
 	LastChecked     string    `json:"last_checked"`
 }
 
-// SamplesCopy returns an isolated copy of the humidity samples.
+// SamplesCopy returns an isolated copy of the humidity samples so mutations
+// to the returned slice cannot affect the artifact's stored samples.
 func (a Artifact) SamplesCopy() []float64 {
-	return a.HumiditySamples
+	if a.HumiditySamples == nil {
+		return nil
+	}
+	out := make([]float64, len(a.HumiditySamples))
+	copy(out, a.HumiditySamples)
+	return out
 }
