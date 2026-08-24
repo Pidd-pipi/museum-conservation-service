@@ -21,12 +21,12 @@ func (rt *opsRouter) applyBatch(w http.ResponseWriter, r *http.Request) {
 		opsWriteError(w, opsInvalid("batch", err))
 		return
 	}
-	_, err := rt.app.Batch.Apply(r.Context(), req.Owner, OpsStatus(req.From), OpsStatus(req.To), req.IDs)
+	result, err := rt.app.Batch.Apply(r.Context(), req.Owner, OpsStatus(req.From), OpsStatus(req.To), req.IDs)
 	if err != nil {
 		opsWriteError(w, err)
 		return
 	}
-	opsJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	opsJSON(w, http.StatusOK, result)
 }
 
 func (rt *opsRouter) listManifests(w http.ResponseWriter, r *http.Request) {

@@ -47,35 +47,47 @@ func (p *OpsBatchProcessor) Apply(ctx context.Context, owner string, from, to Op
 		if err := ctx.Err(); err != nil {
 			return result, err
 		}
-		select {
-		case <-ctx.Done():
-			return result, ctx.Err()
-		case <-p.units:
-		}
-		defer func() { p.units <- struct{}{} }()
-
-		record, err := p.store.Get(ctx, id)
+		ok, err := p.processOne(ctx, manifest, from, to, id)
 		if err != nil {
-			if err == ErrOpsNotFound {
-				result.Skipped++
-				continue
-			}
 			return result, err
 		}
-		if record.Status != from {
+		if ok {
+			result.Applied++
+		} else {
 			result.Skipped++
-			continue
 		}
-		if err := p.state.Move(record.Status, to, "batch"); err != nil {
-			result.Skipped++
-			continue
-		}
-		record.Status = to
-		if err := p.store.Update(ctx, record, record.Revision); err != nil {
-			return result, err
-		}
-		_ = p.manifest.Progress(manifest.BatchID, manifest.Done+1)
-		result.Applied++
 	}
 	return result, nil
+}
+
+// processOne claims a work unit for a single item and releases it before
+// returning, so the batch never accumulates open units across iterations.
+func (p *OpsBatchProcessor) processOne(ctx context.Context, manifest OpsManifest, from, to OpsStatus, id string) (bool, error) {
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	case <-p.units:
+	}
+	release := func() { p.units <- struct{}{} }
+	defer release()
+
+	record, err := p.store.Get(ctx, id)
+	if err != nil {
+		if err == ErrOpsNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	if record.Status != from {
+		return false, nil
+	}
+	if err := p.state.Move(record.Status, to, "batch"); err != nil {
+		return false, err
+	}
+	record.Status = to
+	if err := p.store.Update(ctx, record, record.Revision); err != nil {
+		return false, err
+	}
+	_ = p.manifest.Progress(manifest.BatchID, manifest.Done+1)
+	return true, nil
 }

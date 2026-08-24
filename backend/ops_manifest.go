@@ -74,6 +74,7 @@ func (r *OpsManifestRegistry) Release(batchID string) error {
 	if _, ok := r.manifests[batchID]; !ok {
 		return fmt.Errorf("%w: manifest %s not found", ErrOpsNotFound, batchID)
 	}
+	delete(r.manifests, batchID)
 	return nil
 }
 
