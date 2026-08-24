@@ -74,6 +74,17 @@ func (m *opsStatusMapper) Check(status OpsStatus) error {
 	return nil
 }
 
+// opsNewStatusMapper returns a status mapper seeded with the known operations
+// status set, or nil if validation is disabled. It must return a real
+// non-typed-nil value (or a plain nil interface) so the caller's `mapper != nil`
+// guard behaves correctly: a typed-nil pointer such as (*opsStatusMapper)(nil)
+// is a non-nil interface and would make Check dereference a nil receiver and
+// panic on any non-empty status.
 func opsNewStatusMapper() OpsStatusMapper {
-	return (*opsStatusMapper)(nil)
+	return &opsStatusMapper{allowed: map[OpsStatus]bool{
+		OpsStatusQueued: true,
+		OpsStatusActive: true,
+		OpsStatusPaused: true,
+		OpsStatusClosed: true,
+	}}
 }

@@ -80,8 +80,20 @@ type OpsSnapshot struct {
 	ByPriority  map[OpsPriority]int
 }
 
+// Clone returns a deep copy of the record so callers can mutate the result
+// without aliasing shared map state back into the store or cache. The Labels
+// map is copied because map values share the same underlying header on a plain
+// value copy, which would let edits to the clone leak into the original.
 func (r OpsRecord) Clone() OpsRecord {
-	return r
+	out := r
+	if r.Labels != nil {
+		copied := make(map[string]string, len(r.Labels))
+		for key, value := range r.Labels {
+			copied[key] = value
+		}
+		out.Labels = copied
+	}
+	return out
 }
 
 func (r OpsRecord) LabelValue(key string) string { return r.Labels[key] }
@@ -136,13 +148,22 @@ func opsRules() []OpsRule {
 	return out
 }
 
-// opsDefaultLabels returns the base labels applied to every new record.
-func opsDefaultLabels() map[string]string { return nil }
+// opsDefaultLabels returns the base labels applied to every new record. It
+// returns a fresh non-nil map so callers can safely write into it.
+func opsDefaultLabels() map[string]string { return map[string]string{} }
 
-// opsMergeLabels merges extra labels over base.
+// opsMergeLabels returns a new map containing every entry from base overwritten
+// by every entry from extra. The inputs are never mutated and nil inputs are
+// safe; the result is always non-nil when at least one input is non-nil. This
+// avoids the "assignment to entry in nil map" panic that happened when base
+// was nil and the caller wrote into it.
 func opsMergeLabels(base, extra map[string]string) map[string]string {
-	for key, value := range extra {
-		base[key] = value
+	out := make(map[string]string, len(base)+len(extra))
+	for key, value := range base {
+		out[key] = value
 	}
-	return base
+	for key, value := range extra {
+		out[key] = value
+	}
+	return out
 }

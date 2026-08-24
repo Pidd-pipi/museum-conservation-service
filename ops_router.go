@@ -54,7 +54,6 @@ func (rt *opsRouter) createRecord(w http.ResponseWriter, r *http.Request) {
 		Owner:    req.Owner,
 		Priority: OpsPriority(req.Priority),
 		Status:   OpsStatus(req.Status),
-		Labels:   req.Labels,
 	}
 	if mapper := opsNewStatusMapper(); mapper != nil {
 		if err := mapper.Check(record.Status); err != nil {
@@ -62,6 +61,9 @@ func (rt *opsRouter) createRecord(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Merge the caller-supplied labels over the defaults into a fresh map so we
+	// never mutate the request body's map and never write into a nil map.
+	record.Labels = opsMergeLabels(opsDefaultLabels(), req.Labels)
 	record.Labels["source"] = "api"
 	record.Labels["channel"] = "web"
 	record.Labels["entered_by"] = req.Owner
