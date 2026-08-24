@@ -10,20 +10,29 @@ import (
 // periodically closes stale active records, refreshes the snapshot cache and
 // prunes the audit trail so in-memory state stays bounded.
 type OpsWorker struct {
-	service  *OpsService
-	cache    *OpsSnapshotCache
-	audit    *OpsAudit
-	interval time.Duration
-	stopCh   chan struct{}
-	doneCh   chan struct{}
-	started  atomic.Bool
+	service       *OpsService
+	cache         *OpsSnapshotCache
+	audit         *OpsAudit
+	interval      time.Duration
+	staleActiveTTL time.Duration
+	stopCh        chan struct{}
+	doneCh        chan struct{}
+	started       atomic.Bool
 }
 
 func newOpsWorker(service *OpsService, cache *OpsSnapshotCache, audit *OpsAudit, interval time.Duration) *OpsWorker {
 	if interval <= 0 {
 		interval = time.Second
 	}
-	return &OpsWorker{service: service, cache: cache, audit: audit, interval: interval, stopCh: make(chan struct{}), doneCh: make(chan struct{})}
+	return &OpsWorker{
+		service:        service,
+		cache:          cache,
+		audit:          audit,
+		interval:       interval,
+		staleActiveTTL: 7 * 24 * time.Hour,
+		stopCh:         make(chan struct{}),
+		doneCh:         make(chan struct{}),
+	}
 }
 
 func (w *OpsWorker) Start() {
@@ -58,6 +67,9 @@ func (w *OpsWorker) loop() {
 func (w *OpsWorker) tick() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	// Close stale active records before refreshing the cache so the next
+	// snapshot reflects the updated statuses instead of the stalled ones.
+	w.closeStaleActive(ctx, w.staleActiveTTL)
 	w.refreshCache(ctx)
 	w.pruneAudit(ctx, 2000)
 }

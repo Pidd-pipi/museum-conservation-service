@@ -1,10 +1,16 @@
 package main
 
-import "os"
+import (
+	"os"
+
+	"museum-conservation-service/domain"
+)
 
 type Config struct {
 	Port string
 }
+
+var serviceLabel = domain.ServiceName
 
 func LoadConfig() Config {
 	port := os.Getenv("PORT")
