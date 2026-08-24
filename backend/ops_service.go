@@ -112,9 +112,9 @@ func (s *OpsService) AddNote(recordID, author, text string) (OpsNote, error) {
 	note, err := s.notes.Add(recordID, author, text)
 	if err != nil {
 		if errors.Is(err, ErrOpsNotFound) {
-			return OpsNote{}, fmt.Errorf("note target missing")
+			return OpsNote{}, fmt.Errorf("%w: note target %s missing", ErrOpsNotFound, recordID)
 		}
-		return OpsNote{}, wrapOps("note", "notes.add", err)
+		return OpsNote{}, err
 	}
 	s.audit.Add(recordID, "note_added", author)
 	return note, nil

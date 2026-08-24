@@ -71,6 +71,9 @@ func opsWriteError(w http.ResponseWriter, err error) {
 	case "conflict":
 		status = http.StatusConflict
 		message = err.Error()
+	case "invalid", "transition", "policy":
+		status = http.StatusBadRequest
+		message = err.Error()
 	}
 	opsJSON(w, status, map[string]string{"error": message})
 }

@@ -31,7 +31,7 @@ func newOpsNoteStore(records *OpsStore) *OpsNoteStore {
 
 func (s *OpsNoteStore) Add(recordID, author, text string) (OpsNote, error) {
 	if _, err := s.records.Get(context.Background(), recordID); err != nil {
-		return OpsNote{}, fmt.Errorf("note for %s: %v", recordID, err)
+		return OpsNote{}, fmt.Errorf("note for %s: %w", recordID, err)
 	}
 	if author == "" || text == "" {
 		return OpsNote{}, fmt.Errorf("%w: note author and text are required", ErrOpsInvalid)
